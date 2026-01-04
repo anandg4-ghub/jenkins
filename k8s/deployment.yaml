@@ -14,16 +14,39 @@ spec:
       labels:
         app: hello-app
     spec:
+      initContainers:
+      - name: install-deps
+        image: node:18-alpine
+        command:
+        - sh
+        - -c
+        - |
+          cp -r /app-source/* /app/
+          cd /app
+          npm install --production
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: app-source
+          mountPath: /app-source
       containers:
       - name: hello-app
-        image: hello-app:latest
-        imagePullPolicy: IfNotPresent  # Change to Always if using a registry
+        image: node:18-alpine
+        command:
+        - sh
+        - -c
+        - |
+          cd /app
+          node server.js
         ports:
         - containerPort: 3000
           name: http
         env:
         - name: PORT
           value: "3000"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
         resources:
           requests:
             memory: "64Mi"
@@ -35,11 +58,17 @@ spec:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 15
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 5
+      volumes:
+      - name: app-code
+        emptyDir: {}
+      - name: app-source
+        configMap:
+          name: hello-app-source

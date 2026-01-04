@@ -59,12 +59,15 @@ spec:
                 container('kubectl') {
                     echo '🚀 Deploying to Kubernetes...'
                     sh '''
+                        # Deploy application code as ConfigMap
+                        kubectl apply -f k8s/configmap.yaml -n ${NAMESPACE}
+                        
                         # Deploy application
                         kubectl apply -f k8s/deployment.yaml -n ${NAMESPACE}
                         kubectl apply -f k8s/service.yaml -n ${NAMESPACE}
                         
                         # Wait for deployment
-                        kubectl rollout status deployment/hello-app -n ${NAMESPACE} --timeout=2m
+                        kubectl rollout status deployment/hello-app -n ${NAMESPACE} --timeout=3m
                     '''
                 }
             }
