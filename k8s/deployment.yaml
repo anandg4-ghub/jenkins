@@ -21,14 +21,13 @@ spec:
         - sh
         - -c
         - |
-          cp -r /app-source/* /app/
           cd /app
           npm install --production
         volumeMounts:
         - name: app-code
           mountPath: /app
         - name: app-source
-          mountPath: /app-source
+          mountPath: /app
       containers:
       - name: hello-app
         image: node:18-alpine
@@ -68,7 +67,5 @@ spec:
           periodSeconds: 5
       volumes:
       - name: app-code
-        emptyDir: {}
-      - name: app-source
         configMap:
           name: hello-app-source
