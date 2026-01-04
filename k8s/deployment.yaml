@@ -26,8 +26,6 @@ spec:
         volumeMounts:
         - name: app-code
           mountPath: /app
-        - name: app-source
-          mountPath: /app
       containers:
       - name: hello-app
         image: node:18-alpine
