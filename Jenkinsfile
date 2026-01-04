@@ -30,7 +30,7 @@ spec:
     }
     
     environment {
-        NAMESPACE = "default"
+        NAMESPACE = "jenkins"
     }
     
     stages {
@@ -59,9 +59,6 @@ spec:
                 container('kubectl') {
                     echo '🚀 Deploying to Kubernetes...'
                     sh '''
-                        # Apply RBAC (if not already applied)
-                        kubectl apply -f k8s/rbac.yaml || true
-                        
                         # Deploy application
                         kubectl apply -f k8s/deployment.yaml -n ${NAMESPACE}
                         kubectl apply -f k8s/service.yaml -n ${NAMESPACE}
@@ -98,7 +95,7 @@ spec:
             ✅ Pipeline completed successfully!
             
             To test your app:
-            kubectl port-forward svc/hello-app-service 8080:80 -n default
+            kubectl port-forward svc/hello-app-service 8080:80 -n jenkins
             
             Then visit: http://localhost:8080
             '''
