@@ -1,0 +1,140 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  serviceAccountName: jenkins
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - sleep
+    args:
+    - 9999999
+    volumeMounts:
+    - name: kaniko-secret
+      mountPath: /kaniko/.docker
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command:
+    - cat
+    tty: true
+  - name: node
+    image: node:18-alpine
+    command:
+    - cat
+    tty: true
+  volumes:
+  - name: kaniko-secret
+    emptyDir: {}
+"""
+        }
+    }
+    
+    environment {
+        IMAGE_NAME = "hello-app"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        NAMESPACE = "default" // Change to your namespace
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code...'
+                checkout scm
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                container('node') {
+                    echo 'Running tests...'
+                    sh '''
+                        cd app
+                        npm install
+                        npm test
+                    '''
+                }
+            }
+        }
+        
+        stage('Build Docker Image with Kaniko') {
+            steps {
+                container('kaniko') {
+                    echo 'Building Docker image with Kaniko (no Docker daemon needed)...'
+                    sh '''
+                        /kaniko/executor --context=${WORKSPACE} \
+                        --dockerfile=${WORKSPACE}/Dockerfile \
+                        --destination=${IMAGE_NAME}:${IMAGE_TAG} \
+                        --destination=${IMAGE_NAME}:latest \
+                        --no-push \
+                        --tar-path=${WORKSPACE}/image.tar
+                    '''
+                }
+            }
+        }
+        
+        stage('Load Image to Cluster') {
+            steps {
+                echo 'Image built and ready for deployment'
+                // Note: With --no-push, the image is built locally
+                // In a real cluster, you'd either:
+                // 1. Push to a registry (Docker Hub, ECR, GCR, etc.)
+                // 2. Use a local registry in the cluster
+                // 3. Build on each node (for single-node clusters)
+            }
+        }
+        
+        stage('Deploy to K8s') {
+            steps {
+                container('kubectl') {
+                    echo 'Deploying to Kubernetes...'
+                    sh '''
+                        # Apply deployment and service
+                        kubectl apply -f k8s/deployment.yaml -n ${NAMESPACE}
+                        kubectl apply -f k8s/service.yaml -n ${NAMESPACE}
+                        
+                        # Update image if deployment exists
+                        kubectl set image deployment/hello-app hello-app=${IMAGE_NAME}:${IMAGE_TAG} -n ${NAMESPACE} || true
+                        
+                        # Wait for rollout
+                        kubectl rollout status deployment/hello-app -n ${NAMESPACE} --timeout=2m
+                    '''
+                }
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                container('kubectl') {
+                    echo 'Verifying deployment...'
+                    sh '''
+                        echo "Pods:"
+                        kubectl get pods -l app=hello-app -n ${NAMESPACE}
+                        
+                        echo "\\nService:"
+                        kubectl get svc hello-app-service -n ${NAMESPACE}
+                    '''
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+            echo 'To access your app, run: kubectl port-forward svc/hello-app-service 8080:80 -n ${NAMESPACE}'
+        }
+        failure {
+            echo '❌ Pipeline failed! Check the logs above.'
+        }
+        always {
+            echo 'Pipeline finished.'
+        }
+    }
+}
