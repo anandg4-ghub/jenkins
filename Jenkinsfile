@@ -14,17 +14,17 @@ spec:
   serviceAccountName: jenkins
   containers:
   - name: kubectl
-    image: bitnami/kubectl:latest
+    image: alpine/k8s:1.28.3
     command:
-    - sleep
-    args:
-    - "99999"
+    - /bin/sh
+    - -c
+    - "sleep 3600"
   - name: node
     image: node:18-alpine
     command:
-    - sleep
-    args:
-    - "99999"
+    - /bin/sh
+    - -c
+    - "sleep 3600"
 """
         }
     }
