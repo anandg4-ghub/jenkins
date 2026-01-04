@@ -16,13 +16,15 @@ spec:
   - name: kubectl
     image: bitnami/kubectl:latest
     command:
-    - cat
-    tty: true
+    - sleep
+    args:
+    - "99999"
   - name: node
     image: node:18-alpine
     command:
-    - cat
-    tty: true
+    - sleep
+    args:
+    - "99999"
 """
         }
     }
